@@ -1,0 +1,167 @@
+{
+  "pullRequest": {
+    "owner": "octocat",
+    "repo": "Hello-World",
+    "number": 1
+  },
+  "fileReviews": [
+    {
+      "file": "README",
+      "codeQuality": {
+        "file": "README",
+        "issues": [
+          {
+            "line": 2,
+            "severity": "info",
+            "category": "style",
+            "description": "Missing space between command and description. The command '$mkdir ~/Hello-World' is concatenated with its explanation without proper formatting or separation.",
+            "suggestion": "Separate command from description with a newline or proper markdown formatting. Use code blocks for shell commands: '```bash\\n$ mkdir ~/Hello-World\\n```\\nCreates a directory for your project called \"Hello-World\" in your user directory'"
+          },
+          {
+            "line": 3,
+            "severity": "info",
+            "category": "style",
+            "description": "Missing space and proper formatting between command and description for the cd command.",
+            "suggestion": "Use consistent markdown code block formatting for all shell commands and separate them from descriptions"
+          },
+          {
+            "line": 4,
+            "severity": "info",
+            "category": "style",
+            "description": "Missing space and proper formatting between command and description for the git init command.",
+            "suggestion": "Apply consistent formatting with markdown code blocks and line breaks"
+          },
+          {
+            "line": 1,
+            "severity": "low",
+            "category": "maintainability",
+            "description": "README lacks proper markdown structure. No headings, sections, or organization. Content appears to be raw terminal output without documentation structure.",
+            "suggestion": "Reorganize with proper markdown headers and sections: '# Hello World Project\\n## Setup Instructions\\n### Step 1: Create Directory\\n```bash\\n$ mkdir ~/Hello-World\\n```\\nCreates a directory for your project called \"Hello-World\" in your user directory'"
+          },
+          {
+            "line": 2,
+            "severity": "low",
+            "category": "maintainability",
+            "description": "Hardcoded directory path uses example user directory reference that may not be universally applicable. Documentation should clarify this is a placeholder.",
+            "suggestion": "Add clarification such as: 'Note: Replace `your_user_directory` with your actual username' or use environment variable notation like `$HOME/Hello-World`"
+          },
+          {
+            "line": 6,
+            "severity": "low",
+            "category": "maintainability",
+            "description": "README is incomplete. Ends abruptly after 'touch README' with no actual content provided for the README file or explanation of what should be included.",
+            "suggestion": "Complete the documentation by providing: purpose of the project, installation instructions, usage guide, contribution guidelines, and license information"
+          },
+          {
+            "line": 1,
+            "severity": "info",
+            "category": "best-practice",
+            "description": "README follows no standard documentation structure. Best practice requires at least project description, installation, and usage sections.",
+            "suggestion": "Follow standard README.md structure: Project title, description, features, installation, usage, contribution guidelines, and license"
+          }
+        ],
+        "overallScore": 25,
+        "summary": "The README file lacks proper markdown formatting, structure, and organization. Content is presented as raw terminal output without clear separation between commands and descriptions. The documentation is incomplete and does not follow standard README conventions. While there are no security or performance issues, maintainability is severely compromised by poor structure, inconsistent formatting, and incomplete content. The file requires significant restructuring to serve as effective project documentation."
+      },
+      "testCoverage": {
+        "file": "README",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [],
+        "coverageEstimate": 100,
+        "summary": "README is a documentation file containing shell command examples and explanatory text. It is not executable code and does not contain functions, classes, methods, or branches that require test coverage. Documentation files are not subject to unit testing frameworks."
+      },
+      "refactorings": {
+        "file": "README",
+        "suggestions": [
+          {
+            "type": "simplify",
+            "location": "Line 2-3",
+            "impact": "medium",
+            "description": "Command descriptions are concatenated directly to commands without proper formatting or separation, making the content difficult to parse and maintain. The inline descriptions should be separated into distinct sections or formatted as structured documentation.",
+            "before": "$ mkdir ~/Hello-WorldCreates a directory for your project called \"Hello-World\" in your user directory\n$ cd ~/Hello-WorldChanges the current working directory to your newly created directory",
+            "after": "$ mkdir ~/Hello-World\nCreates a directory for your project called \"Hello-World\" in your user directory.\n\n$ cd ~/Hello-World\nChanges the current working directory to your newly created directory.",
+            "benefits": "Improves readability by separating commands from explanations, makes the documentation easier to scan and follow, and aligns with standard markdown documentation practices for CLI instructions."
+          },
+          {
+            "type": "simplify",
+            "location": "Line 4-5",
+            "impact": "medium",
+            "description": "Inconsistent formatting between command and output. The git output is shown inline without clear separation, making it unclear where the command ends and the output begins.",
+            "before": "$ git initSets up the necessary Git files\nInitialized empty Git repository in /Users/your_user_directory/Hello-World/.git/",
+            "after": "$ git init\nSets up the necessary Git files.\n\nInitialized empty Git repository in /Users/your_user_directory/Hello-World/.git/",
+            "benefits": "Establishes consistent formatting throughout the documentation, makes the distinction between commands, descriptions, and output explicit, and improves clarity for new users following these instructions."
+          },
+          {
+            "type": "simplify",
+            "location": "Line 6",
+            "impact": "low",
+            "description": "Incomplete instruction. The final command line \"$ touch README\" lacks a description explaining its purpose, breaking the established pattern of the previous entries.",
+            "before": "$ touch README",
+            "after": "$ touch README\nCreates an empty README file for your project documentation.",
+            "benefits": "Completes the documentation by providing context for every command shown, maintains consistency throughout the guide, and helps users understand the purpose of each step."
+          }
+        ],
+        "summary": "The README file contains structural inconsistencies in formatting and documentation presentation. Commands and their descriptions are concatenated without proper separation, making the content difficult to read and maintain. Three suggestions focus on improving formatting consistency, adding missing documentation, and aligning with standard markdown practices for CLI documentation."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 1,
+    "overallScore": 25,
+    "criticalIssues": 0,
+    "highPriorityTests": 0,
+    "refactoringOpportunities": 3
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "documentation-structure",
+      "description": "Restructure README with proper markdown formatting using headers, sections, and code blocks. Separate shell commands from descriptions with newlines instead of concatenating them inline.",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "documentation-completeness",
+      "description": "Complete the README documentation by adding project description, purpose, comprehensive installation instructions, usage guide, contribution guidelines, and license information.",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "formatting-consistency",
+      "description": "Apply consistent formatting throughout the documentation. Use markdown code blocks for all shell commands and ensure descriptions follow each command with proper line breaks.",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "user-guidance",
+      "description": "Add clarification notes for hardcoded paths (e.g., replace `your_user_directory` with actual username or use environment variable notation like `$HOME/Hello-World`).",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "best-practices",
+      "description": "Follow standard README.md conventions and structure as established by GitHub and open-source community standards. Include project metadata and clear organization.",
+      "files": [
+        "README"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-06T06:52:33Z",
+    "duration": 3200,
+    "agentVersions": {
+      "code-quality-analyzer": "1.0.0",
+      "test-coverage-analyzer": "1.0.0",
+      "refactoring-suggester": "1.0.0"
+    }
+  }
+}

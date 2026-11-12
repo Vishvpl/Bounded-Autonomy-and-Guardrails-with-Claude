@@ -1,0 +1,425 @@
+{
+  "pullRequest": {
+    "owner": "shinshin86",
+    "repo": "todo-opfs-sqlite",
+    "number": 1
+  },
+  "fileReviews": [
+    {
+      "file": "src/db.ts",
+      "codeQuality": {
+        "file": "src/db.ts",
+        "issues": [
+          {
+            "line": 4,
+            "severity": "high",
+            "category": "maintainability",
+            "description": "Variable 'db' is typed as 'any', which defeats TypeScript type safety. This makes it impossible to catch type-related errors at compile time and obscures the actual structure of the database object.",
+            "suggestion": "Create a proper TypeScript interface or type definition for the NeverChangeDB object and use that instead of 'any'."
+          },
+          {
+            "line": 1,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Use of '@ts-ignore' comment suppresses TypeScript type checking for the import statement. This bypasses valuable type safety checks and should only be used as a last resort.",
+            "suggestion": "Install proper TypeScript type definitions for the 'neverchange' library, or create a type declaration file (.d.ts) if types are not available."
+          },
+          {
+            "line": 7,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "The condition 'if(db) db;' checks if db exists but then does nothing with it. The statement 'db;' is a no-op that has no effect. This appears to be a logic error where early return was intended.",
+            "suggestion": "Replace with 'if(db) return;' to properly exit the function if the database is already initialized."
+          },
+          {
+            "line": 45,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "The error handling in 'addTodo' catches the error but only logs it without re-throwing. This silently swallows errors, making it difficult for callers to know if the operation failed.",
+            "suggestion": "Either re-throw the error after logging, or return a result object indicating success/failure to allow callers to handle failures appropriately."
+          },
+          {
+            "line": 52,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "Inconsistent error handling pattern. Some functions (addTodo) catch and log errors, while others (toggleTodo, getTodos) do not handle errors at all. This creates unpredictable behavior.",
+            "suggestion": "Adopt a consistent error handling strategy across all database functions. Either handle all errors consistently or let them propagate uniformly."
+          },
+          {
+            "line": 52,
+            "severity": "info",
+            "category": "style",
+            "description": "Inconsistent whitespace in the function. There are unnecessary spaces and formatting inconsistencies in the parameter passing.",
+            "suggestion": "Format the query and parameters on separate lines consistently, or use a code formatter like Prettier."
+          },
+          {
+            "line": 56,
+            "severity": "medium",
+            "category": "performance",
+            "description": "Query 'SELECT * FROM todos WHERE deleted = 0 ORDER BY id DESC' uses SELECT * which retrieves all columns even if not all are needed. This wastes bandwidth and memory for large tables.",
+            "suggestion": "Specify only the required columns: 'SELECT id, text, completed FROM todos WHERE deleted = 0 ORDER BY id DESC'"
+          },
+          {
+            "line": 60,
+            "severity": "low",
+            "category": "maintainability",
+            "description": "The function 'toggleTodo' has no error handling or return value, making it impossible to verify if the operation succeeded.",
+            "suggestion": "Add try-catch block and return the result to allow callers to handle potential database errors."
+          },
+          {
+            "line": 8,
+            "severity": "critical",
+            "category": "security",
+            "description": "No connection pooling or resource management. The database connection is stored in a module-level variable without proper initialization checks or cleanup. This can lead to resource leaks if the module is reloaded or in serverless environments.",
+            "suggestion": "Implement proper connection pooling, add a close/cleanup function, and ensure initDb() is only called once with proper synchronization."
+          },
+          {
+            "line": 40,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "Missing null/undefined check for the 'db' variable before using it. If 'initDb' is not called or fails, operations will crash with 'Cannot read property of null'.",
+            "suggestion": "Add a validation function that ensures 'db' is initialized before each operation, or throw an explicit error if not initialized."
+          }
+        ],
+        "overallScore": 42,
+        "summary": "The database module has several critical and high-severity issues that impact security, reliability, and maintainability. The most critical issue is the lack of proper connection management and resource cleanup. High-severity issues include use of 'any' types that bypass TypeScript safety and a logic error in the initialization check. Error handling is inconsistent and incomplete across functions, with some operations silently failing. The code lacks proper validation of the database state before operations. Security concerns exist around resource management in serverless or multi-initialization scenarios. Type safety is severely compromised through the use of '@ts-ignore' and 'any' types. Performance can be improved by specifying explicit columns in SELECT queries. Overall, this code requires significant refactoring to meet production-quality standards."
+      },
+      "testCoverage": {
+        "file": "src/db.ts",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [
+          {
+            "type": "function",
+            "location": "initDb",
+            "priority": "critical",
+            "reasoning": "Database initialization is critical infrastructure. Without tests, migrations may fail silently or database schema could be misconfigured in production.",
+            "suggestedTest": "it('should initialize database with migrations', async () => {\n  await initDb();\n  expect(db).toBeDefined();\n  expect(db.init).toHaveBeenCalled();\n  expect(db.addMigrations).toHaveBeenCalledWith(expect.arrayContaining([\n    expect.objectContaining({ version: 1 }),\n    expect.objectContaining({ version: 2 })\n  ]));\n});"
+          },
+          {
+            "type": "function",
+            "location": "addTodo",
+            "priority": "high",
+            "reasoning": "Data insertion is a core operation. The function has error handling with console.log/error calls that should be verified. The success and failure paths need coverage.",
+            "suggestedTest": "it('should add a todo successfully', async () => {\n  const consoleSpy = vi.spyOn(console, 'log');\n  await addTodo('Test todo');\n  expect(db.execute).toHaveBeenCalledWith('INSERT INTO todos (text) VALUES (?)', ['Test todo']);\n  expect(consoleSpy).toHaveBeenCalledWith('Todo added successfully');\n});"
+          },
+          {
+            "type": "branch",
+            "location": "addTodo error handling",
+            "priority": "high",
+            "reasoning": "The catch block in addTodo should be tested to ensure error handling works correctly when database operations fail.",
+            "suggestedTest": "it('should handle error when adding todo fails', async () => {\n  const error = new Error('Database error');\n  db.execute.mockRejectedValueOnce(error);\n  const consoleSpy = vi.spyOn(console, 'error');\n  await addTodo('Test todo');\n  expect(consoleSpy).toHaveBeenCalledWith('Failed to add todo:', error);\n});"
+          },
+          {
+            "type": "function",
+            "location": "getTodos",
+            "priority": "high",
+            "reasoning": "Query function returns todos filtered by deleted=0. Should test successful retrieval, empty results, and null handling.",
+            "suggestedTest": "it('should get non-deleted todos ordered by id descending', async () => {\n  const mockTodos = [{ id: 1, text: 'Todo 1', completed: false, deleted: 0 }];\n  db.query.mockResolvedValueOnce(mockTodos);\n  const result = await getTodos();\n  expect(db.query).toHaveBeenCalledWith('SELECT * FROM todos WHERE deleted = 0 ORDER BY id DESC');\n  expect(result).toEqual(mockTodos);\n});"
+          },
+          {
+            "type": "edge-case",
+            "location": "getTodos null handling",
+            "priority": "medium",
+            "reasoning": "If db.query returns null, the function returns empty array. This edge case needs explicit testing.",
+            "suggestedTest": "it('should return empty array when query returns null', async () => {\n  db.query.mockResolvedValueOnce(null);\n  const result = await getTodos();\n  expect(result).toEqual([]);\n});"
+          },
+          {
+            "type": "function",
+            "location": "toggleTodo",
+            "priority": "high",
+            "reasoning": "Toggle functionality is important but lacks error handling. Should test that completed status is properly toggled.",
+            "suggestedTest": "it('should toggle todo completed status', async () => {\n  await toggleTodo(1);\n  expect(db.execute).toHaveBeenCalledWith('UPDATE todos SET completed = NOT completed WHERE id = ?', [1]);\n});"
+          },
+          {
+            "type": "function",
+            "location": "updateTodo",
+            "priority": "high",
+            "reasoning": "Update operation modifies user data and has error handling with console logging. Both success and failure paths need coverage.",
+            "suggestedTest": "it('should update todo text successfully', async () => {\n  const consoleSpy = vi.spyOn(console, 'log');\n  await updateTodo(1, 'Updated text');\n  expect(db.execute).toHaveBeenCalledWith('UPDATE todos SET text = ? WHERE id = ?', ['Updated text', 1]);\n  expect(consoleSpy).toHaveBeenCalledWith('Todo updated successfully');\n});"
+          },
+          {
+            "type": "branch",
+            "location": "updateTodo error handling",
+            "priority": "high",
+            "reasoning": "Error handling throws and logs errors. Should test that errors are properly logged and re-thrown.",
+            "suggestedTest": "it('should throw error and log when update fails', async () => {\n  const error = new Error('Update failed');\n  db.execute.mockRejectedValueOnce(error);\n  const consoleSpy = vi.spyOn(console, 'error');\n  await expect(updateTodo(1, 'text')).rejects.toThrow('Update failed');\n  expect(consoleSpy).toHaveBeenCalledWith('Failed to update todo:', error);\n});"
+          },
+          {
+            "type": "function",
+            "location": "deleteTodo",
+            "priority": "high",
+            "reasoning": "Soft delete operation is critical for data integrity. Should test the update of deleted flag and error handling.",
+            "suggestedTest": "it('should mark todo as deleted successfully', async () => {\n  const consoleSpy = vi.spyOn(console, 'log');\n  await deleteTodo(1);\n  expect(db.execute).toHaveBeenCalledWith('UPDATE todos SET deleted = 1 WHERE id = ?', [1]);\n  expect(consoleSpy).toHaveBeenCalledWith('Todo marked as deleted successfully');\n});"
+          },
+          {
+            "type": "branch",
+            "location": "deleteTodo error handling",
+            "priority": "high",
+            "reasoning": "Error handling should be tested to ensure deletion failures are properly logged and errors are propagated.",
+            "suggestedTest": "it('should throw error and log when delete fails', async () => {\n  const error = new Error('Delete failed');\n  db.execute.mockRejectedValueOnce(error);\n  const consoleSpy = vi.spyOn(console, 'error');\n  await expect(deleteTodo(1)).rejects.toThrow('Delete failed');\n  expect(consoleSpy).toHaveBeenCalledWith('Failed to mark todo as deleted:', error);\n});"
+          }
+        ],
+        "coverageEstimate": 0,
+        "summary": "The file src/db.ts has no test coverage. All six exported functions (initDb, addTodo, getTodos, toggleTodo, updateTodo, deleteTodo) are untested, including their error handling branches. The database initialization with migrations, CRUD operations, and error handling paths require comprehensive testing. The file contains a likely bug on line 6 where 'if(db) db;' should probably be 'if(db) return;' to prevent reinitializing an already initialized database. All functions interact with database operations and user data, making them critical for testing."
+      },
+      "refactorings": {
+        "file": "src/db.ts",
+        "suggestions": [
+          {
+            "type": "simplify",
+            "location": "initDb()",
+            "impact": "medium",
+            "description": "Dead code: the statement 'if(db) db;' has no effect. It checks if db exists but does nothing. This should either return early or be removed.",
+            "before": "  if(db) db;\n\n  db = new NeverChangeDB(DB_NAME);",
+            "after": "  if (db) return;\n\n  db = new NeverChangeDB(DB_NAME);",
+            "benefits": "Prevents re-initialization of the database connection and makes the intent clear that this is a singleton pattern. The current code allows the connection to be overwritten, which could lead to resource leaks."
+          },
+          {
+            "type": "extract-function",
+            "location": "addTodo(), updateTodo(), deleteTodo()",
+            "impact": "medium",
+            "description": "Repeated try-catch-console logging pattern appears in multiple functions. This creates maintenance burden and inconsistent error handling across the module.",
+            "before": "  try {\n    await db.execute(...);\n    console.log('...');\n  } catch (error) {\n    console.error('...', error);\n    throw error;  // or no throw in addTodo\n  }",
+            "after": "async function executeDbOperation(\n  operation: () => Promise<void>,\n  successMessage: string,\n  shouldThrow = false\n) {\n  try {\n    await operation();\n    console.log(successMessage);\n  } catch (error) {\n    console.error(`Database operation failed: ${successMessage}`, error);\n    if (shouldThrow) throw error;\n  }\n}",
+            "benefits": "Eliminates code duplication, provides consistent error handling strategy, makes it easier to change logging/error handling behavior globally, and reduces maintenance burden."
+          },
+          {
+            "type": "simplify",
+            "location": "getTodos()",
+            "impact": "low",
+            "description": "Unnecessary null coalescing. The query will return an array from the database, making the '|| []' fallback redundant unless the library actually returns null.",
+            "before": "  const rows = await db.query('SELECT * FROM todos WHERE deleted = 0 ORDER BY id DESC');\n  return rows || [];",
+            "after": "  return await db.query('SELECT * FROM todos WHERE deleted = 0 ORDER BY id DESC') ?? [];",
+            "benefits": "Uses modernized nullish coalescing operator, removes unnecessary intermediate variable, and is more explicit about null/undefined handling."
+          },
+          {
+            "type": "modernize",
+            "location": "addTodo(), updateTodo(), deleteTodo()",
+            "impact": "low",
+            "description": "The module uses console.log/console.error for all logging. Consider a more structured approach or dependency injection for logging.",
+            "before": "    console.log('Todo added successfully');\n  } catch (error) {\n    console.error('Failed to add todo:', error);",
+            "after": "    // Option 1: Use a logger instance\n    logger.info('Todo added successfully');\n  } catch (error) {\n    logger.error('Failed to add todo:', error);",
+            "benefits": "Enables structured logging, makes the codebase more testable, and allows switching between different logging implementations without changing the module."
+          },
+          {
+            "type": "simplify",
+            "location": "initDb()",
+            "impact": "medium",
+            "description": "Migrations array is defined inline within the function. This could be extracted as a constant for better maintainability and testability, especially as more migrations are added.",
+            "before": "  db.addMigrations([\n    {\n      version: 1,\n      up: async (db: any) => { ... },\n    },\n    {\n      version: 2,\n      up: async (db: any) => { ... },\n    },\n  ]);",
+            "after": "const MIGRATIONS = [\n  {\n    version: 1,\n    up: async (db: any) => { ... },\n  },\n  {\n    version: 2,\n    up: async (db: any) => { ... },\n  },\n];\n\nexport async function initDb() {\n  if (db) return;\n  db = new NeverChangeDB(DB_NAME);\n  db.addMigrations(MIGRATIONS);",
+            "benefits": "Makes migrations easier to version control separately, improves readability, enables easier testing of migrations, and separates concerns between initialization logic and data schema."
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Module level - db variable",
+            "impact": "high",
+            "description": "The module uses a module-level mutable variable 'db' with 'any' type. This creates implicit global state and makes the code harder to test and reason about. Consider implementing a proper singleton or dependency injection pattern.",
+            "before": "let db: any = null;\nconst DB_NAME = 'todo';\nexport async function initDb() {\n  if(db) db;\n  db = new NeverChangeDB(DB_NAME);",
+            "after": "const DB_NAME = 'todo';\n\nclass DatabaseManager {\n  private static instance: DatabaseManager | null = null;\n  private db: any = null;\n  \n  private constructor() {}\n  \n  static getInstance(): DatabaseManager {\n    if (!DatabaseManager.instance) {\n      DatabaseManager.instance = new DatabaseManager();\n    }\n    return DatabaseManager.instance;\n  }\n  \n  async init(): Promise<void> {\n    if (this.db) return;\n    this.db = new NeverChangeDB(DB_NAME);\n    // ...\n  }\n  \n  async addTodo(text: string): Promise<void> {\n    // Use this.db instead of global db\n  }\n}",
+            "benefits": "Provides a proper singleton pattern with better encapsulation, makes the code more testable (can mock/reset between tests), eliminates implicit global state, enables type safety, and follows OOP best practices."
+          }
+        ],
+        "summary": "The db.ts module has several refactoring opportunities. Primary issues include: a dead code statement that doesn't prevent re-initialization (fixing this prevents resource leaks), repeated try-catch-console logging patterns that should be extracted into a helper function, unnecessary null coalescing in getTodos(), and most significantly, the module-level mutable global state that would benefit from a proper singleton or dependency injection pattern. Additionally, migrations should be extracted to a constant for better maintainability. These changes will improve testability, maintainability, and prevent potential bugs from unintended database re-initialization."
+      }
+    },
+    {
+      "file": "package.json",
+      "codeQuality": {
+        "file": "package.json",
+        "issues": [
+          {
+            "line": 18,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Caret version specifier (^0.0.1) for neverchange package suggests a very early development stage version with potentially incomplete features, limited testing, and high risk of breaking changes.",
+            "suggestion": "Verify the maturity level and stability of neverchange before production use. Consider pinning to an exact version (0.0.1) rather than using caret (^) for 0.x packages, or waiting for a more stable release (v1.0.0+)."
+          }
+        ],
+        "overallScore": 92,
+        "summary": "The package.json is well-structured with appropriate dependencies for a TODO application. The primary concern is the addition of neverchange at version 0.0.1, which is an extremely early pre-release version. Using caret versioning (^0.0.1) on such an unstable package increases risk of unexpected breaking changes. All other dependencies use reasonable semantic versioning. No critical security vulnerabilities detected; all major dependencies are from reputable sources. Consider either pinning the neverchange version exactly or waiting for a more mature release before production deployment."
+      },
+      "testCoverage": {
+        "file": "package.json",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "neverchange (^0.0.1) integration",
+            "priority": "critical",
+            "reasoning": "A new dependency with version 0.0.1 is being added without any integration tests. The package may have breaking changes or incompatibilities with the existing codebase that are not tested.",
+            "suggestedTest": "it('should successfully initialize neverchange with NeverChangeDB', async () => {\n  const { NeverChangeDB } = require('neverchange');\n  const db = new NeverChangeDB('test');\n  expect(db).toBeDefined();\n  expect(typeof db.execute).toBe('function');\n  expect(typeof db.query).toBe('function');\n});"
+          }
+        ],
+        "coverageEstimate": 95,
+        "summary": "package.json is a configuration file with no executable functions requiring unit test coverage. However, the new neverchange dependency integration should be tested at the integration level to ensure compatibility with the existing application. No new test scripts were added to package.json to validate the new dependency, which represents a gap in the change validation process."
+      },
+      "refactorings": {
+        "file": "package.json",
+        "suggestions": [],
+        "summary": "No structural refactoring opportunities identified in package.json. The file is well-organized with clear separation between dependencies and devDependencies. The addition of neverchange follows the existing pattern. Consider adding a test:integration or test:db script to validate database layer integration as part of the refactoring strategy for src/db.ts."
+      }
+    },
+    {
+      "file": "package-lock.json",
+      "codeQuality": {
+        "file": "package-lock.json",
+        "issues": [
+          {
+            "line": 1,
+            "severity": "high",
+            "category": "security",
+            "description": "The neverchange package (version 0.0.1) is at an extremely early development stage. Pre-release 0.x versions often lack security audits, may have unpatched vulnerabilities, and are not recommended for production use.",
+            "suggestion": "Conduct a security audit of neverchange before using in production. Consider waiting for version 1.0.0+ or use an alternative mature package with established security practices."
+          },
+          {
+            "line": 1,
+            "severity": "high",
+            "category": "best-practice",
+            "description": "The neverchange version uses caret (^0.0.1) which allows minor version updates in the lock file. For 0.x packages, semantic versioning treats minor version changes as potentially breaking. This violates best practices for pre-release dependencies.",
+            "suggestion": "Change version constraint from '^0.0.1' to exact version '0.0.1' in package-lock.json, or update package.json to use exact pinning (0.0.1) instead of caret."
+          },
+          {
+            "line": 1,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "The neverchange dependency includes a transitive dependency on @sqlite.org/sqlite-wasm with a non-standard build suffix (^3.46.1-build2). This indicates a custom build that may have unexpected behavior or incompatibilities.",
+            "suggestion": "Document the purpose of the 'build2' suffix and validate its compatibility with the rest of the application. Consider using the officially released version without build suffixes if available."
+          },
+          {
+            "line": 1,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "Adding neverchange as a production dependency when it's at version 0.0.1 creates tight coupling to unstable code. This increases maintenance burden and upgrade complexity.",
+            "suggestion": "Evaluate whether neverchange can be replaced with a more mature alternative, or document the specific reason for using an early-stage package and commit to a migration path."
+          }
+        ],
+        "overallScore": 35,
+        "summary": "The package-lock.json addition of neverchange (^0.0.1) introduces significant quality and security concerns. The package is at pre-release stage with inappropriate semantic versioning constraints and includes a transitive dependency on a custom sqlite-wasm build variant. These factors create security, stability, and maintainability risks. The overall score reflects the high-risk nature of adding an ultra-early-stage dependency to production code. Immediate recommendations: pin exact versions for 0.x packages, verify package maturity and security, document justification for early-stage dependency use, and establish a clear upgrade path."
+      },
+      "testCoverage": {
+        "file": "package-lock.json",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "neverchange version 0.0.1 compatibility",
+            "priority": "critical",
+            "reasoning": "A 0.0.1 version package is being locked without any integration or regression tests. Changes in patch versions could break the application.",
+            "suggestedTest": "it('should ensure neverchange API remains stable', async () => {\n  const { NeverChangeDB } = require('neverchange');\n  const db = new NeverChangeDB('test');\n  const expectedMethods = ['execute', 'query', 'addMigrations', 'init'];\n  expectedMethods.forEach(method => {\n    expect(typeof db[method]).toBe('function');\n  });\n});"
+          },
+          {
+            "type": "edge-case",
+            "location": "@sqlite.org/sqlite-wasm build2 variant compatibility",
+            "priority": "high",
+            "reasoning": "The custom build variant (build2) of sqlite-wasm may have differences from the standard release. No tests verify its compatibility or behavior.",
+            "suggestedTest": "it('should initialize sqlite-wasm build2 variant without errors', async () => {\n  const { NeverChangeDB } = require('neverchange');\n  const db = new NeverChangeDB('test');\n  await db.init();\n  expect(db.db).toBeDefined();\n});"
+          }
+        ],
+        "coverageEstimate": 0,
+        "summary": "The package-lock.json file represents dependency specifications, not executable code. However, the new neverchange dependency (0.0.1) requires integration testing that is currently absent. The lock file itself has no test coverage, but the dependencies it specifies need validation through integration tests in the application layer. The addition of ultra-early-stage dependencies without corresponding integration tests represents a significant risk."
+      },
+      "refactorings": {
+        "file": "package-lock.json",
+        "suggestions": [
+          {
+            "type": "simplify",
+            "location": "neverchange dependency version constraint",
+            "impact": "high",
+            "description": "The neverchange dependency uses caret versioning (^0.0.1) which is semantically incorrect for 0.x packages. Caret allows minor version updates which are treated as potentially breaking in 0.x versioning.",
+            "before": "\"neverchange\": \"^0.0.1\"",
+            "after": "\"neverchange\": \"0.0.1\"",
+            "benefits": "Ensures deterministic, reproducible builds. Exact pinning prevents unexpected breaking changes when dependencies are reinstalled. Aligns with semantic versioning best practices for pre-release packages."
+          }
+        ],
+        "summary": "One high-impact refactoring opportunity identified: fix the version constraint for neverchange from caret (^0.0.1) to exact pinning (0.0.1). This prevents uncontrolled version updates that could introduce breaking changes. The lock file should reflect the exact versions being used, which is especially critical for pre-release dependencies where breaking changes are common across patch versions."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 3,
+    "overallScore": 56,
+    "criticalIssues": 2,
+    "highPriorityTests": 11,
+    "refactoringOpportunities": 9
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Security & Resource Management",
+      "description": "Fix critical security issue in src/db.ts: Add proper connection pooling and resource cleanup. The database connection is stored in a module-level variable without proper initialization checks or cleanup, which can lead to resource leaks in serverless environments and on module reloads. Implement a proper singleton pattern with connection lifecycle management.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "critical",
+      "category": "Dependency Stability",
+      "description": "Reassess neverchange dependency usage. The neverchange package at version 0.0.1 is at an extremely early development stage with unaudited security, potential API instability, and inappropriate semantic versioning. Either pin to exact version (0.0.1) to prevent breaking changes, conduct a security audit, or consider migrating to a more mature database abstraction library.",
+      "files": [
+        "package.json",
+        "package-lock.json"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Type Safety",
+      "description": "Remove TypeScript type safety bypasses in src/db.ts. Replace '@ts-ignore' with proper type definitions and eliminate 'any' type annotations. Install type definitions for neverchange library or create a .d.ts file. This will enable compile-time error detection and improve code maintainability.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Bug Fix",
+      "description": "Fix logic error in src/db.ts line 7: Replace 'if(db) db;' with 'if(db) return;' to implement proper idempotency check. The current no-op statement allows database re-initialization, potentially causing resource leaks and connection conflicts.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Test Coverage",
+      "description": "Add comprehensive test suite for src/db.ts with 12+ test cases covering: database initialization with migrations (critical), all CRUD operations (addTodo, getTodos, toggleTodo, updateTodo, deleteTodo), error handling paths, and edge cases. Current coverage is 0% with no tests.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Error Handling Consistency",
+      "description": "Standardize error handling across src/db.ts functions. Some functions silently swallow errors (addTodo), while others throw (updateTodo, deleteTodo). Implement a consistent pattern using the suggested executeDbOperation helper function to ensure predictable behavior and enable reliable error propagation to callers.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Code Refactoring",
+      "description": "Extract repeated try-catch-console patterns in src/db.ts into a reusable helper function. This eliminates duplication, centralizes error handling logic, and makes the module easier to maintain. Extract migrations array to a module-level constant for better versioning and testability.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Performance Optimization",
+      "description": "Optimize database query in getTodos() to use explicit column selection instead of 'SELECT *'. Specify only required columns (id, text, completed) to reduce bandwidth and memory usage, especially important as todo lists grow larger.",
+      "files": [
+        "src/db.ts"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-12T10:45:30.000Z",
+    "duration": 45230,
+    "agentVersions": {
+      "code-quality-analyzer": "1.0.0",
+      "test-coverage-analyzer": "1.0.0",
+      "refactoring-suggester": "1.0.0"
+    }
+  }
+}

@@ -1,0 +1,349 @@
+{
+  "pullRequest": {
+    "owner": "lucaong",
+    "repo": "minisearch",
+    "number": 305
+  },
+  "fileReviews": [
+    {
+      "file": "src/MiniSearch.ts",
+      "codeQuality": {
+        "file": "src/MiniSearch.ts",
+        "issues": [
+          {
+            "line": 1707,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "Map deletion during iteration in QueryCombination filter handling could cause unpredictable behavior or skipped entries.",
+            "suggestion": "Collect docIds to delete in array first, then delete after iteration completes."
+          },
+          {
+            "line": 1973,
+            "severity": "medium",
+            "category": "bug-risk",
+            "description": "Quality calculation uses falsy check for terms.length which creates implicit coercion risk.",
+            "suggestion": "Use explicit comparison: `terms.length > 0 ? terms.length : 1`"
+          },
+          {
+            "line": 1976,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "Object.assign() can overwrite critical result properties if stored fields have same keys.",
+            "suggestion": "Use spread with explicit ordering to protect result properties."
+          },
+          {
+            "line": 1967,
+            "severity": "medium",
+            "category": "bug-risk",
+            "description": "Score calculation lacks null/undefined checks; NaN could propagate through results.",
+            "suggestion": "Add defensive check: `(rawValue.score || 0) * quality`"
+          },
+          {
+            "line": 1708,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "Duplicate filter logic between executeQuery and QueryCombination paths.",
+            "suggestion": "Extract common filter helper method."
+          },
+          {
+            "line": 1982,
+            "severity": "medium",
+            "category": "performance",
+            "description": "Repeated Map.get() calls in makeResult loop with large result sets.",
+            "suggestion": "Consider caching documentIds and storedFields for docIds in rawResults."
+          },
+          {
+            "line": 1366,
+            "severity": "medium",
+            "category": "bug-risk",
+            "description": "Filter exceptions not caught; expensive construction happens before filtering.",
+            "suggestion": "Consider try-catch or moving filter earlier in pipeline."
+          },
+          {
+            "line": 1969,
+            "severity": "low",
+            "category": "best-practice",
+            "description": "QueryTerms may contain duplicates without normalization.",
+            "suggestion": "Document behavior or use Set for deduplication."
+          },
+          {
+            "line": 1981,
+            "severity": "low",
+            "category": "style",
+            "description": "Method signature readability reduced by inlined type definitions.",
+            "suggestion": "Extract RawResultValue as separate type."
+          },
+          {
+            "line": 1972,
+            "severity": "info",
+            "category": "best-practice",
+            "description": "Match object assigned without validation.",
+            "suggestion": "Validate structure before assignment."
+          }
+        ],
+        "overallScore": 72,
+        "summary": "The makeResult extraction improves maintainability but introduces multiple quality concerns: high-severity Map mutation during iteration, medium-severity defensive programming gaps around scores and property overwrites, performance concerns with repeated Map lookups, and maintainability issues with filter logic duplication. Several issues warrant attention before merging."
+      },
+      "testCoverage": {
+        "file": "src/MiniSearch.test.js",
+        "hasTests": true,
+        "testFiles": [
+          "src/MiniSearch.test.js"
+        ],
+        "untestedPaths": [
+          {
+            "type": "branch",
+            "location": "Complex query filtering with AND combineWith",
+            "priority": "critical",
+            "reasoning": "Only OR combination tested; AND semantics with filters untested.",
+            "suggestedTest": "test('filters work with AND combineWith')"
+          },
+          {
+            "type": "edge-case",
+            "location": "Empty results after filtering",
+            "priority": "high",
+            "reasoning": "No test for all results filtered out.",
+            "suggestedTest": "test('returns empty when all filtered out')"
+          },
+          {
+            "type": "function",
+            "location": "Error handling in filter",
+            "priority": "high",
+            "reasoning": "Exceptions in filter functions not tested.",
+            "suggestedTest": "test('handles filter exceptions')"
+          },
+          {
+            "type": "edge-case",
+            "location": "Score validity after filtering",
+            "priority": "high",
+            "reasoning": "PR notes score differences; no validation test.",
+            "suggestedTest": "test('score remains valid after filtering')"
+          },
+          {
+            "type": "edge-case",
+            "location": "Falsy filter returns",
+            "priority": "high",
+            "reasoning": "Returns of 0, '', null, undefined not tested.",
+            "suggestedTest": "test('handles falsy return values')"
+          },
+          {
+            "type": "branch",
+            "location": "Empty query list with filter",
+            "priority": "medium",
+            "reasoning": "Edge case with no sub-queries.",
+            "suggestedTest": "test('handles empty query list with filter')"
+          }
+        ],
+        "coverageEstimate": 40,
+        "summary": "One new test provides basic happy-path validation but critical scenarios untested: error handling, different combine strategies, empty results, score validation, and falsy returns. Estimated 40% coverage. Production deployment risky without additional tests."
+      },
+      "refactorings": {
+        "file": "src/MiniSearch.ts",
+        "suggestions": [
+          {
+            "type": "extract-function",
+            "location": "Filter handling lines 1383 and 1710",
+            "impact": "medium",
+            "description": "Duplicate filter application pattern in executeQuery and QueryCombination.",
+            "before": "for(const[docId,rawValue]of rawResults){const result=this.makeResult(docId,rawValue)\nif(searchOptionsWithDefaults.filter==null||searchOptionsWithDefaults.filter(result)){results.push(result)}}",
+            "after": "private applyFilter(entries,filter,callback){for(const[docId,rawValue]of entries){const result=this.makeResult(docId,rawValue)\nif(filter==null||filter(result)){callback(docId,result)}}}",
+            "benefits": "Single source of truth for filter semantics, eliminates duplication, improves maintainability."
+          },
+          {
+            "type": "simplify",
+            "location": "QueryCombination filter logic line 1710",
+            "impact": "medium",
+            "description": "Inverted logic unclear; separate mutation from filtering.",
+            "before": "if(!options.filter(result))combined.delete(docId)",
+            "after": "const toDelete=[]\nfor(...){if(!options.filter(result))toDelete.push(docId)}\ntoDelete.forEach(id=>combined.delete(id))",
+            "benefits": "Clearer intent, separates concerns, less confusing."
+          },
+          {
+            "type": "modernize",
+            "location": "Filter condition line 1383",
+            "impact": "low",
+            "description": "Modernize null check pattern.",
+            "before": "if(searchOptionsWithDefaults.filter==null||searchOptionsWithDefaults.filter(result))",
+            "after": "if(searchOptionsWithDefaults.filter?.(result)??true)",
+            "benefits": "Uses modern idioms, more concise, clearer intent."
+          }
+        ],
+        "summary": "Good extraction of makeResult method. Opportunity to further reduce filter logic duplication, simplify inverted logic, and modernize patterns. Primary focus should be extracting common filter application."
+      }
+    },
+    {
+      "file": "src/MiniSearch.test.js",
+      "codeQuality": {
+        "file": "src/MiniSearch.test.js",
+        "issues": [
+          {
+            "line": 1254,
+            "severity": "low",
+            "category": "best-practice",
+            "description": "Array sorting without explicit comparator may give non-deterministic results.",
+            "suggestion": "Use explicit comparator for stable sort."
+          },
+          {
+            "line": 1389,
+            "severity": "info",
+            "category": "best-practice",
+            "description": "Good practice: changed let to const for immutable reference.",
+            "suggestion": "Maintain const/let distinction throughout tests."
+          }
+        ],
+        "overallScore": 85,
+        "summary": "Test file quality is generally good. New test demonstrates proper structure but lacks comprehensive edge case coverage. Minor style improvement with const change. Overall solid foundation but needs expanded coverage."
+      },
+      "testCoverage": {
+        "file": "src/MiniSearch.test.js",
+        "hasTests": true,
+        "testFiles": [
+          "src/MiniSearch.test.js"
+        ],
+        "untestedPaths": [
+          {
+            "type": "branch",
+            "location": "Complex filtering AND combineWith",
+            "priority": "critical",
+            "reasoning": "AND combination strategy not tested with filters.",
+            "suggestedTest": "test AND combination filtering"
+          },
+          {
+            "type": "edge-case",
+            "location": "All results filtered",
+            "priority": "high",
+            "reasoning": "Boundary: no results pass filter.",
+            "suggestedTest": "test empty result case"
+          },
+          {
+            "type": "function",
+            "location": "Filter throws error",
+            "priority": "high",
+            "reasoning": "Exception handling not tested.",
+            "suggestedTest": "test error in filter"
+          },
+          {
+            "type": "edge-case",
+            "location": "Score integrity",
+            "priority": "high",
+            "reasoning": "PR mentions score differences; not validated.",
+            "suggestedTest": "test score values"
+          },
+          {
+            "type": "edge-case",
+            "location": "Falsy filter values",
+            "priority": "high",
+            "reasoning": "0, '', null, undefined returns not tested.",
+            "suggestedTest": "test falsy returns"
+          },
+          {
+            "type": "branch",
+            "location": "Empty queries with filter",
+            "priority": "medium",
+            "reasoning": "Edge case not covered.",
+            "suggestedTest": "test empty query list"
+          }
+        ],
+        "coverageEstimate": 40,
+        "summary": "Basic filtering test added but significant gaps remain. Critical missing scenarios: AND strategy, error handling, empty results, score validation, falsy returns. Estimated 40% coverage of new feature. Recommend additional tests before production."
+      },
+      "refactorings": {
+        "file": "src/MiniSearch.test.js",
+        "suggestions": [
+          {
+            "type": "simplify",
+            "location": "Test assertion line 1260",
+            "impact": "low",
+            "description": "Sorting in assertion fragile to data changes.",
+            "before": "expect(results.map(({category})=>category).sort()).toEqual(['fiction','poetry'])",
+            "after": "expect(results).toHaveLength(2);expect(results.map(r=>r.category)).toEqual(expect.arrayContaining(['fiction','poetry']))",
+            "benefits": "Clearer intent, robust to ordering, documents exact expectations."
+          }
+        ],
+        "summary": "Test structure is sound. Primary opportunity is making new test assertion more explicit and robust using arrayContaining matcher. Overall good test design with opportunity for minor clarity improvement."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 2,
+    "overallScore": 75,
+    "criticalIssues": 1,
+    "highPriorityTests": 5,
+    "refactoringOpportunities": 3
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Bug Risk - Map Mutation During Iteration",
+      "description": "QueryCombination filter at line 1707 deletes Map entries during iteration, risking skipped entries or unpredictable behavior. Collect deletions in array first.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Insufficient Test Coverage - Critical Paths",
+      "description": "Complex query filtering lacks tests for: error handling, AND/OR strategies, empty results, score consistency, and falsy returns. Production risk.",
+      "files": [
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Defensive Programming - Score Calculations",
+      "description": "Line 1967 score calculation lacks null/undefined checks; NaN could propagate. Add: `(rawValue.score || 0) * quality`",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Maintainability - Property Overwrites",
+      "description": "Line 1976 Object.assign() risks overwriting critical result fields. Use spread with explicit ordering.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Missing Test Coverage - Edge Cases",
+      "description": "Five high-priority scenarios missing: AND combineWith, error handling, empty results, score validation, falsy return values.",
+      "files": [
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Code Duplication - Filter Logic",
+      "description": "Filter application duplicated at lines 1383 and 1710. Extract common applyFilter() method.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Semantic Clarity - Inverted Logic",
+      "description": "QueryCombination uses inverted logic (delete non-matching). Collect deletions, then delete after iteration for clarity.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Performance - Map Lookups",
+      "description": "Repeated Map.get() calls in makeResult loop. Consider caching for large result sets.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-12T00:00:00Z",
+    "duration": 45000,
+    "agentVersions": {
+      "code-quality-analyzer": "1.0.0",
+      "test-coverage-analyzer": "1.0.0",
+      "refactoring-suggester": "1.0.0"
+    }
+  }
+}
