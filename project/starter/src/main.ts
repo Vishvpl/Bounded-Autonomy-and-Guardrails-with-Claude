@@ -1,49 +1,91 @@
 import * as dotenv from 'dotenv';
+import path from 'path';
+import { CodeReviewOrchestrator } from './orchestrator.js';
+import { ReviewError, formatError } from './utils/error-handler.js';
+import { promises as fs } from 'fs';
+import { ReportGenerator } from './utils/report-generator.js';
+import { logger } from './utils/logger.js';
 
-// Load environment variables
 dotenv.config();
 
-/**
- * Main entry point for the Claude Multi-Agent Code Review System
- * Usage: npm run dev <owner> <repo> <pr-number>
- */
 async function main() {
   const [owner, repo, prStr] = process.argv.slice(2);
 
-  // TODO: Validate command line arguments
-  // - Check if owner, repo, and prStr are provided
-  // - Convert prStr to number and validate it's a valid integer
-  // - Exit with error message if validation fails
+  if (!owner || !repo || !prStr) {
+    console.error('Usage: npm run dev -- <owner> <repo> <pr-number>');
+    console.error('Example: npm run dev -- facebook react 12345');
+    process.exit(1);
+  }
 
-  // TODO: Validate authentication (choose ONE method)
-  // Students must have either:
-  //   - ANTHROPIC_API_KEY environment variable, OR
-  //   - AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY for Bedrock
-  //
-  // If using AWS Bedrock:
-  //   - Verify AWS_REGION is set
-  //   - Log: "🔐 Using AWS Bedrock authentication"
-  // If using Anthropic API:
-  //   - Log: "🔐 Using Anthropic API authentication"
-  // If neither method is configured:
-  //   - Exit with clear error message showing both options
+  const prNumber = parseInt(prStr, 10);
+  if (isNaN(prNumber) || prNumber <= 0 || String(prNumber) !== prStr) {
+    console.error('Error: pr-number must be a positive integer.');
+    process.exit(1);
+  }
 
-  // TODO: Validate ANTHROPIC_MODEL environment variable
-  // This is REQUIRED for both authentication methods
-  // - For AWS Bedrock: us.anthropic.claude-sonnet-4-5-20250929-v1:0
-  // - For Anthropic API: claude-sonnet-4-5-20250929
-  // Exit with error if not set
+  const requiredEnv = ['ANTHROPIC_MODEL', 'GITHUB_TOKEN'] as const;
+  const missing = requiredEnv.filter((key) => !process.env[key]);
 
-  console.log('start here', owner, repo, prStr)
+  const hasAnthropicAPI = !!process.env.ANTHROPIC_API_KEY;
+  const hasAWSCredentials = !!(
+    process.env.AWS_ACCESS_KEY_ID &&
+    process.env.AWS_SECRET_ACCESS_KEY &&
+    process.env.AWS_REGION
+  );
+
+  if (missing.length > 0 || (!hasAnthropicAPI && !hasAWSCredentials)) {
+    console.error('Missing required environment configuration:');
+    for (const key of missing) {
+      console.error(`  - ${key}`);
+    }
+    console.error('Also set either ANTHROPIC_API_KEY or AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_REGION.');
+    process.exit(1);
+  }
+
+  if (hasAWSCredentials && !hasAnthropicAPI) {
+    console.log('Using AWS Bedrock authentication');
+  } else {
+    console.log('Using Anthropic API authentication');
+  }
+
+  logger.info(`Starting review of ${owner}/${repo} PR #${prNumber}...`);
+
+  const orchestrator = new CodeReviewOrchestrator();
+  const report = await orchestrator.reviewPullRequest(owner, repo, prNumber);
+
+  const reportGenerator = new ReportGenerator();
+  const outDir = 'reports';
+  await fs.mkdir(outDir, { recursive: true });
+
+  const base = `${owner}_${repo}_${prNumber}`;
+  const jsonPath = path.join(outDir, `${base}.json`);
+  const mdPath = path.join(outDir, `${base}.md`);
+  const htmlPath = path.join(outDir, `${base}.html`);
+
+  await Promise.all([
+    fs.writeFile(jsonPath, reportGenerator.generateJSONReport(report), 'utf-8'),
+    fs.writeFile(mdPath, reportGenerator.generateMarkdownReport(report), 'utf-8'),
+    fs.writeFile(htmlPath, reportGenerator.generateHTMLReport(report), 'utf-8'),
+  ]);
+
+  logger.info('Review complete. Reports saved:');
+  logger.info(`  JSON:     ${jsonPath}`);
+  logger.info(`  Markdown: ${mdPath}`);
+  logger.info(`  HTML:     ${htmlPath}`);
+  logger.info(`  Overall score: ${report.summary.overallScore}/100`);
+}
+
+async function run() {
   try {
-    // TODO: Create orchestrator instance
-    // TODO: Call .reviewPullRequest(owner, repo, prNumber);
-    // TODO: Generate formatted reports using ReportGenerator
-    // Hint: Use ReportGenerator to create Markdown, HTML, and JSON reports
-    // Save reports to 'reports/' directory with appropriate filenames
+    await main();
   } catch (error) {
-    console.error('Error:', error);
+    if (error instanceof ReviewError) {
+      console.error(`Review failed [${error.code}]: ${error.message}`);
+    } else {
+      console.error('Error:', formatError(error));
+    }
+    process.exit(1);
   }
 }
 
-main();
+run();
